@@ -91,7 +91,7 @@ router.post('/:id/import/csv', async (req: Request, res: Response) => {
     const row = rows[rr]!
     for (let cc = 0; cc < Math.min(row.length, 15); cc++) {
       const value = row[cc] ?? ''
-      nextCells[`${rr},${cc}`] = { ...(nextCells[`${rr},${cc}`] ?? { value: '' }), value, raw: value }
+      nextCells[`${rr},${cc}`] = { ...(nextCells[`${rr},${cc}`] ?? { value: '' }), value }
     }
   }
   const nextSheets = doc.sheets.map((s) => (s.id === target.id ? { ...s, cells: nextCells } : s))
