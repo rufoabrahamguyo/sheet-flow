@@ -1,0 +1,260 @@
+.sf-header {
+  border-bottom: 1px solid #e0e0e0;
+  background: #fff;
+}
+
+.sf-header__topRow {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 0 12px;
+  gap: 12px;
+}
+
+.sf-header__leftTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.sf-header__appIcon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.sf-header__titleGroup {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 4px;
+  flex: 1 1 auto;
+}
+
+.sf-header__titleLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sf-header__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #202124;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(420px, 46vw);
+}
+
+.sf-header__menuRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.sf-header__menuItem {
+  border: none;
+  background: transparent;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #3c4043;
+  flex: 0 0 auto;
+}
+
+.sf-header__menuItem:hover {
+  background: rgba(60, 64, 67, 0.08);
+}
+
+.sf-header__menuItem.is-active {
+  background: rgba(26, 115, 232, 0.12);
+  color: #174ea6;
+}
+
+.sf-header__rightTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.sf-header__iconButton {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #5f6368;
+}
+
+.sf-header__iconButton:hover {
+  background: rgba(60, 64, 67, 0.08);
+}
+
+.sf-header__shareButton {
+  margin-left: 8px;
+  padding: 8px 14px;
+  border: 1px solid #d2e3fc;
+  background: #d2e3fc;
+  color: #174ea6;
+  border-radius: 999px;
+}
+
+.sf-header__shareInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sf-header__shareText {
+  font-weight: 600;
+}
+
+/* Responsive behavior */
+@media (max-width: 860px) {
+  .sf-header__menuRow {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .sf-header__menuRow::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .sf-header__topRow {
+    height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    align-items: flex-start;
+  }
+
+  .sf-header__title {
+    max-width: 55vw;
+  }
+
+  .sf-header__shareButton {
+    padding: 8px 10px;
+  }
+
+  .sf-header__shareText {
+    display: none;
+  }
+}
+
+@media (max-width: 460px) {
+  .sf-header__title {
+    max-width: 48vw;
+  }
+}
+
+.sf-hide-sm {
+  display: inline-grid;
+}
+
+@media (max-width: 640px) {
+  .sf-hide-sm {
+    display: none !important;
+  }
+}
+
+/* Ribbon (Edit tab) */
+.sf-ribbon {
+  border-top: 1px solid #e0e0e0;
+  background: #fafafa;
+  padding: 8px 12px;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sf-ribbon::-webkit-scrollbar {
+  display: none;
+}
+
+.sf-ribbon__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  border-radius: 10px;
+  flex: 0 0 auto;
+}
+
+.sf-ribbon__groupTitle {
+  font-size: 12px;
+  color: #5f6368;
+  font-weight: 600;
+}
+
+.sf-ribbon__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sf-ribbon__divider {
+  width: 1px;
+  background: #e0e0e0;
+  align-self: stretch;
+  flex: 0 0 auto;
+}
+
+.sf-ribbon__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: #3c4043;
+  white-space: nowrap;
+}
+
+.sf-ribbon__btn:hover {
+  background: rgba(60, 64, 67, 0.06);
+}
+
+.sf-ribbon__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sf-ribbon__btnIcon {
+  display: grid;
+  place-items: center;
+  color: #5f6368;
+}
+
+.sf-ribbon__btnText {
+  font-size: 13px;
+  color: #202124;
+}
+
+@media (max-width: 520px) {
+  .sf-ribbon__btnText {
+    display: none;
+  }
+  .sf-ribbon__btn {
+    padding: 8px;
+  }
+}

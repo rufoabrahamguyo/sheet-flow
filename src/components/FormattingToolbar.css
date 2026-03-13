@@ -1,0 +1,77 @@
+.sf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin-left: 10px;
+  min-width: 0;
+}
+
+.sf-toolbar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a1a1a;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.sf-toolbar__btn:hover {
+  background: rgba(60, 64, 67, 0.06);
+}
+
+.sf-toolbar__btn.is-active {
+  background: #e8e8e8;
+}
+
+.sf-toolbar__label {
+  width: 18px;
+  display: inline-block;
+  text-align: center;
+}
+
+.sf-toolbar__label--bold {
+  font-weight: 800;
+}
+
+.sf-toolbar__label--italic {
+  font-style: italic;
+}
+
+.sf-toolbar__text {
+  font-size: 13px;
+  color: #3c4043;
+}
+
+/* Responsive: shrink and hide text on small widths */
+@media (max-width: 720px) {
+  .sf-toolbar {
+    gap: 6px;
+    margin-left: 6px;
+  }
+  .sf-toolbar__btn {
+    padding: 6px 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .sf-toolbar {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    margin-left: 0;
+  }
+  .sf-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .sf-toolbar__text {
+    display: none;
+  }
+  .sf-toolbar__btn {
+    padding: 6px 8px;
+  }
+}
