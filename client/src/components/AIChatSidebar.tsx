@@ -18,6 +18,7 @@ interface AIChatSidebarProps {
   onGenerateReport?: () => Promise<(ReportResult & { success?: boolean }) | null>
   onAddReceiptToSheet?: (data: ReceiptExtractResult) => void
   onAddMpesaToSheet?: (data: MpesaAnalysisResult) => void
+  onAddReportToSheet?: (data: ReportResult) => void
 }
 
 export function AIChatSidebar({
@@ -35,6 +36,7 @@ export function AIChatSidebar({
   onGenerateReport,
   onAddReceiptToSheet,
   onAddMpesaToSheet,
+  onAddReportToSheet,
 }: AIChatSidebarProps) {
   const [input, setInput] = useState('')
   const [attachError, setAttachError] = useState<string | null>(null)
@@ -303,11 +305,52 @@ export function AIChatSidebar({
           <div style={cardStyle}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>📊 Business report</div>
             {reportContent.financialSummary && (
-              <div style={{ marginBottom: 8 }}>
-                Revenue: {reportContent.financialSummary.monthlyRevenue != null ? `${reportContent.financialSummary.currency ?? ''} ${reportContent.financialSummary.monthlyRevenue.toLocaleString()}` : '—'} · 
-                Expenses: {reportContent.financialSummary.monthlyExpenses != null ? `${reportContent.financialSummary.currency ?? ''} ${reportContent.financialSummary.monthlyExpenses.toLocaleString()}` : '—'} · 
-                P/L: {reportContent.financialSummary.profitLoss != null ? `${reportContent.financialSummary.currency ?? ''} ${reportContent.financialSummary.profitLoss.toLocaleString()}` : '—'}
-              </div>
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'flex-end',
+                    marginBottom: 8,
+                    height: 80,
+                  }}
+                >
+                  {['Revenue', 'Expenses', 'P/L'].map((label, idx) => {
+                    const fs = reportContent.financialSummary!
+                    const value =
+                      label === 'Revenue'
+                        ? fs.monthlyRevenue ?? 0
+                        : label === 'Expenses'
+                        ? fs.monthlyExpenses ?? 0
+                        : fs.profitLoss ?? 0
+                    const max =
+                      Math.max(
+                        fs.monthlyRevenue ?? 0,
+                        fs.monthlyExpenses ?? 0,
+                        Math.abs(fs.profitLoss ?? 0)
+                      ) || 1
+                    const height = Math.max(8, (Math.abs(value) / max) * 70)
+                    const isNegative = value < 0 && label === 'P/L'
+                    return (
+                      <div key={label} style={{ flex: 1, textAlign: 'center', fontSize: 11 }}>
+                        <div
+                          style={{
+                            margin: '0 auto 4px',
+                            width: 20,
+                            height,
+                            borderRadius: 4,
+                            background: isNegative ? '#c62828' : idx === 0 ? '#1976d2' : '#f9a825',
+                          }}
+                        />
+                        <div>{label}</div>
+                        <div style={{ fontSize: 10, color: '#555' }}>
+                          {fs.currency ?? ''} {value.toLocaleString()}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )}
             {reportContent.insights?.length > 0 && (
               <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
@@ -317,7 +360,37 @@ export function AIChatSidebar({
               </ul>
             )}
             {reportContent.narrative && <p style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{reportContent.narrative}</p>}
-            <button type="button" onClick={() => setReportContent(null)} style={{ marginTop: 8, padding: '6px 12px', fontSize: 12, border: '1px solid #ddd', borderRadius: 4, background: '#fff' }}>Dismiss</button>
+            <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+              {onAddReportToSheet && documentId && (
+                <button
+                  type="button"
+                  onClick={() => onAddReportToSheet(reportContent)}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 12,
+                    border: 'none',
+                    borderRadius: 4,
+                    background: '#1976d2',
+                    color: '#fff',
+                  }}
+                >
+                  Add to sheet
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setReportContent(null)}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 12,
+                  border: '1px solid #ddd',
+                  borderRadius: 4,
+                  background: '#fff',
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 

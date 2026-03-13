@@ -5,9 +5,10 @@ interface SheetTabsProps {
   sheets: SheetData[]
   activeSheetId: string
   onSelectSheet: (sheetId: string) => void
+  onAddSheet?: () => void
 }
 
-export function SheetTabs({ sheets, activeSheetId, onSelectSheet }: SheetTabsProps) {
+export function SheetTabs({ sheets, activeSheetId, onSelectSheet, onAddSheet }: SheetTabsProps) {
   return (
     <div
       style={{
@@ -37,6 +38,24 @@ export function SheetTabs({ sheets, activeSheetId, onSelectSheet }: SheetTabsPro
           {sheet.name}
         </button>
       ))}
+      {onAddSheet && (
+        <button
+          type="button"
+          onClick={onAddSheet}
+          title="Add sheet"
+          style={{
+            marginLeft: 8,
+            padding: '0 10px',
+            border: '1px solid #e0e0e0',
+            borderRadius: 999,
+            background: '#f5f5f5',
+            fontSize: 18,
+            lineHeight: '22px',
+          }}
+        >
+          +
+        </button>
+      )}
     </div>
   )
 }
