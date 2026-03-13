@@ -5,7 +5,7 @@ import {
   listDocumentsForUser,
   putDocumentForUser,
 } from '../db.js'
-import { validatePutDocumentBody } from '../middleware/validation.js'
+import { validateDocumentId, validatePutDocumentBody } from '../middleware/validation.js'
 import type { DocumentData } from '../types.js'
 import type { AuthedRequest } from '../middleware/auth.js'
 import { z } from 'zod'
@@ -42,7 +42,7 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(201).json({ document: doc })
 })
 
-router.get('/:id/export/csv', async (req: Request, res: Response) => {
+router.get('/:id/export/csv', validateDocumentId, async (req: Request, res: Response) => {
   const r = req as AuthedRequest
   const id = req.params.id as string
   const doc = await getDocumentForUser(r.user.id, id)
@@ -70,7 +70,7 @@ const importSchema = z.object({
   csv: z.string().min(1),
 })
 
-router.post('/:id/import/csv', async (req: Request, res: Response) => {
+router.post('/:id/import/csv', validateDocumentId, async (req: Request, res: Response) => {
   const r = req as AuthedRequest
   const id = req.params.id as string
   const doc = await getDocumentForUser(r.user.id, id)
@@ -100,7 +100,7 @@ router.post('/:id/import/csv', async (req: Request, res: Response) => {
   res.json({ ok: true, document: nextDoc })
 })
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', validateDocumentId, async (req: Request, res: Response) => {
   const r = req as AuthedRequest
   const id = req.params.id as string
   const doc = await getDocumentForUser(r.user.id, id)
@@ -120,7 +120,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   res.json({ document: doc })
 })
 
-router.put('/:id', validatePutDocumentBody, async (req: Request, res: Response) => {
+router.put('/:id', validateDocumentId, validatePutDocumentBody, async (req: Request, res: Response) => {
   const r = req as AuthedRequest
   const id = req.params.id as string
   const { document } = req.body as { document: DocumentData }

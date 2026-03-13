@@ -124,6 +124,93 @@ Accepts either:
 
 ---
 
+## Document intelligence (receipt scanning)
+
+### POST `/api/extract/receipt`
+
+Upload a receipt or invoice image (JPEG, PNG, WebP). The AI extracts structured data.
+
+**Request:** `multipart/form-data` with field `file` (image).
+
+**Response**
+
+```json
+{
+  "success": true,
+  "result": {
+    "date": "YYYY-MM-DD or string",
+    "supplier": "string",
+    "total": number | null,
+    "currency": "string | null",
+    "lineItems": [
+      { "itemName": "string", "quantity": number, "unitPrice": number, "amount": number, "category": "string" }
+    ]
+  }
+}
+```
+
+Requires `GEMINI_API_KEY`. 400 if no file or wrong type; 422 if image could not be parsed.
+
+---
+
+## M-Pesa analysis
+
+### POST `/api/mpesa/analyze`
+
+Upload an M-Pesa statement file or send pasted text. Returns parsed transactions, summary totals, and an AI-generated insight.
+
+**Request:** Either
+
+1. **Multipart:** field `file` (text/CSV file), or  
+2. **JSON:** `{ "text": "pasted statement text" }`.
+
+**Response**
+
+```json
+{
+  "success": true,
+  "transactions": [
+    { "date": "string", "description": "string", "amount": number, "type": "credit" | "debit" }
+  ],
+  "summary": {
+    "totalRevenue": number,
+    "totalExpenses": number,
+    "netProfit": number,
+    "transactionCount": number
+  },
+  "insight": "One-sentence summary, e.g. Your business received KES 145,000 in sales this month through M-Pesa."
+}
+```
+
+---
+
+## Business report
+
+### POST `/api/report/generate`
+
+Generates a financial summary and business insights from the current spreadsheet data.
+
+**Request body**
+
+```json
+{ "documentId": "string" }
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "financialSummary": { "monthlyRevenue": number | null, "monthlyExpenses": number | null, "profitLoss": number | null, "currency": "string" } | null,
+  "insights": ["string", "..."],
+  "narrative": "One paragraph with notable finding."
+}
+```
+
+Uses the document owned by the current user (or anonymous). 404 if document not found.
+
+---
+
 ## Errors
 
 Error responses use HTTP status codes and a JSON body:

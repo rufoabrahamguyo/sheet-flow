@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React from 'react'
 import './Header.css'
 
 export type EditCommand =
@@ -12,24 +12,12 @@ export type EditCommand =
   | 'selectAll'
 
 export function Header({
-  onEditCommand,
-  hasSelection = false,
   rightSlot,
 }: {
   onEditCommand?: (cmd: EditCommand) => void
   hasSelection?: boolean
   rightSlot?: React.ReactNode
 }) {
-  const items = useMemo(
-    () => ['File', 'Edit', 'View', 'Insert', 'Format', 'Data', 'Tools', 'Gemini', 'Extensions', 'Help'] as const,
-    []
-  )
-  const [activeTab, setActiveTab] = useState<(typeof items)[number] | null>(null)
-
-  const handleMenuClick = (item: (typeof items)[number]) => {
-    setActiveTab((prev) => (prev === item ? null : item))
-  }
-
   return (
     <header className="sf-header">
       <div className="sf-header__topRow">
@@ -49,18 +37,6 @@ export function Header({
               <IconButton label="Cloud status" className="sf-header__iconButton sf-hide-sm">
                 <CloudIcon />
               </IconButton>
-            </div>
-            <div className="sf-header__menuRow">
-              {items.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className={`sf-header__menuItem ${activeTab === item ? 'is-active' : ''}`}
-                  onClick={() => handleMenuClick(item)}
-                >
-                  {item}
-                </button>
-              ))}
             </div>
           </div>
         </div>
@@ -86,64 +62,6 @@ export function Header({
           </button>
         </div>
       </div>
-
-      {activeTab === 'Edit' && (
-        <div className="sf-ribbon" role="region" aria-label="Edit toolbar">
-          <div className="sf-ribbon__group">
-            <div className="sf-ribbon__groupTitle">Clipboard</div>
-            <div className="sf-ribbon__row">
-              <RibbonButton
-                label="Cut"
-                onClick={() => onEditCommand?.('cut')}
-                disabled={!hasSelection}
-              >
-                <CutIcon />
-              </RibbonButton>
-              <RibbonButton
-                label="Copy"
-                onClick={() => onEditCommand?.('copy')}
-                disabled={!hasSelection}
-              >
-                <CopyIcon />
-              </RibbonButton>
-              <RibbonButton label="Paste" onClick={() => onEditCommand?.('paste')}>
-                <PasteIcon />
-              </RibbonButton>
-            </div>
-          </div>
-
-          <div className="sf-ribbon__divider" />
-
-          <div className="sf-ribbon__group">
-            <div className="sf-ribbon__groupTitle">History</div>
-            <div className="sf-ribbon__row">
-              <RibbonButton label="Undo" onClick={() => onEditCommand?.('undo')}>
-                <UndoIcon />
-              </RibbonButton>
-              <RibbonButton label="Redo" onClick={() => onEditCommand?.('redo')}>
-                <RedoIcon />
-              </RibbonButton>
-            </div>
-          </div>
-
-          <div className="sf-ribbon__divider" />
-
-          <div className="sf-ribbon__group">
-            <div className="sf-ribbon__groupTitle">Find</div>
-            <div className="sf-ribbon__row">
-              <RibbonButton label="Find" onClick={() => onEditCommand?.('find')}>
-                <SearchIcon />
-              </RibbonButton>
-              <RibbonButton label="Replace" onClick={() => onEditCommand?.('replace')}>
-                <ReplaceIcon />
-              </RibbonButton>
-              <RibbonButton label="Select all" onClick={() => onEditCommand?.('selectAll')}>
-                <SelectAllIcon />
-              </RibbonButton>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   )
 }
@@ -160,34 +78,6 @@ function IconButton({
   return (
     <button type="button" aria-label={label} title={label} className={className}>
       {children}
-    </button>
-  )
-}
-
-function RibbonButton({
-  label,
-  onClick,
-  disabled,
-  children,
-}: {
-  label: string
-  onClick: () => void
-  disabled?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      className="sf-ribbon__btn"
-      onClick={onClick}
-      disabled={disabled}
-      title={label}
-      aria-label={label}
-    >
-      <span className="sf-ribbon__btnIcon" aria-hidden="true">
-        {children}
-      </span>
-      <span className="sf-ribbon__btnText">{label}</span>
     </button>
   )
 }
@@ -327,160 +217,6 @@ function ChevronDownIcon() {
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function CutIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4 7l8 5-8 5M12 12l8-9M12 12l8 9"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6.2 9.1a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4ZM6.2 19.3a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-    </svg>
-  )
-}
-
-function CopyIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M9 9h10v12H9V9Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function PasteIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M9 4h6l1 2h3v16H5V6h3l1-2Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 4a2 2 0 0 0 0 4h6a2 2 0 0 0 0-4"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function UndoIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M9 7H4v5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M4 12c2-4 6-6 10-5 3.7.9 6 4.3 6 8"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function RedoIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M15 7h5v5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M20 12c-2-4-6-6-10-5-3.7.9-6 4.3-6 8"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function SearchIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M16.5 16.5 21 21"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function ReplaceIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M7 7h10M7 12h6M7 17h10"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M17 10l2 2-2 2"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function SelectAllIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M6 6h12v12H6V6Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M4 8V6a2 2 0 0 1 2-2h2M20 8V6a2 2 0 0 0-2-2h-2M4 16v2a2 2 0 0 0 2 2h2M20 16v2a2 2 0 0 1-2 2h-2"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
       />
     </svg>
   )

@@ -19,7 +19,8 @@ Copy `.env.example` to `.env` and adjust:
 | `MONGODB_URI`     | MongoDB connection string (e.g. `mongodb://127.0.0.1:27017`). |
 | `MONGODB_DB`      | MongoDB database name (default: `sheetflow`). |
 | `JWT_SECRET`      | Required. Secret used to sign access tokens. |
-| `OPENAI_API_KEY`  | Optional. OpenAI API key for real AI chat; if unset, stub responses are returned. |
+| `GEMINI_API_KEY`  | Optional. Google Gemini API key for AI chat (preferred). Get one at [Google AI Studio](https://aistudio.google.com/apikey). |
+| `OPENAI_API_KEY`  | Optional. OpenAI API key for AI chat if Gemini is not set; stub used when neither is set. |
 
 ## Running
 
@@ -57,4 +58,4 @@ See [API.md](API.md) for request/response shapes and validation.
 
 ## Database
 
-SQLite is used by default. The DB file and directory are created on first run. To use a different path, set `DATABASE_PATH` in `.env`.
+MongoDB is used. Set `MONGODB_URI` (e.g. `mongodb://127.0.0.1:27017`) and optionally `MONGODB_DB` (default: `sheetflow`). On startup the server creates the database and `users` / `documents` collections and indexes. In MongoDB Compass or `mongosh`, look for the database named **sheetflow** (or the value of `MONGODB_DB`). Ensure MongoDB is running and `JWT_SECRET` is set in `.env` so registration and login work.

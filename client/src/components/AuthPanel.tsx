@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 export function AuthPanel({
   mode,
@@ -92,13 +92,15 @@ export function AuthPanel({
             type="submit"
             disabled={loading || !email.trim() || password.length < 8}
             style={{
-              padding: '10px 14px',
+              padding: '12px 16px',
+              minHeight: 44,
               border: 'none',
               borderRadius: 8,
-              background: '#1976d2',
+              background: loading || !email.trim() || password.length < 8 ? '#9e9e9e' : '#1976d2',
               color: '#fff',
               fontWeight: 700,
               marginTop: 4,
+              cursor: loading || !email.trim() || password.length < 8 ? 'not-allowed' : 'pointer',
             }}
           >
             {loading ? 'Please wait…' : mode === 'login' ? 'Login' : 'Register'}

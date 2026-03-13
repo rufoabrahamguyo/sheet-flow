@@ -134,4 +134,53 @@ export const api = {
       body: JSON.stringify({ text, scanHandwriting: !!scanHandwriting }),
     })
   },
+
+  async extractReceipt(file: File) {
+    const form = new FormData()
+    form.append('file', file)
+    const url = `${BASE_URL}/api/extract/receipt`
+    const token = getToken()
+    const res = await fetch(url, {
+      method: 'POST',
+      body: form,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error((err as { message?: string }).message ?? res.statusText)
+    }
+    const data = await res.json() as { success: boolean; result: import('../types').ReceiptExtractResult }
+    return data.result
+  },
+
+  async analyzeMpesaFile(file: File) {
+    const form = new FormData()
+    form.append('file', file)
+    const url = `${BASE_URL}/api/mpesa/analyze`
+    const token = getToken()
+    const res = await fetch(url, {
+      method: 'POST',
+      body: form,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error((err as { message?: string }).message ?? res.statusText)
+    }
+    return res.json() as Promise<import('../types').MpesaAnalysisResult & { success: boolean }>
+  },
+
+  async analyzeMpesaText(text: string) {
+    return request<import('../types').MpesaAnalysisResult & { success: boolean }>('/api/mpesa/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    })
+  },
+
+  async generateReport(documentId: string) {
+    return request<import('../types').ReportResult & { success: boolean }>('/api/report/generate', {
+      method: 'POST',
+      body: JSON.stringify({ documentId }),
+    })
+  },
 }

@@ -14,6 +14,8 @@ export async function initDb(): Promise<void> {
   db = client.db(dbName)
   await db.collection('users').createIndex({ email: 1 }, { unique: true })
   await db.collection('documents').createIndex({ ownerUserId: 1, updatedAt: -1 })
+  // eslint-disable-next-line no-console
+  console.log(`MongoDB connected, database: "${dbName}" (collections: users, documents)`)
 }
 
 export function getDb(): Db {

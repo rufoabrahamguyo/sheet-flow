@@ -1,13 +1,11 @@
 import React from 'react'
 
 interface SidebarProps {
-  onUpload: () => void
-  onCamera: () => void
   onPaste: () => void
   onHistory: () => void
 }
 
-export function Sidebar({ onUpload, onCamera, onPaste, onHistory }: SidebarProps) {
+export function Sidebar({ onPaste, onHistory }: SidebarProps) {
   return (
     <aside
       style={{
@@ -18,20 +16,6 @@ export function Sidebar({ onUpload, onCamera, onPaste, onHistory }: SidebarProps
       }}
     >
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <button
-          type="button"
-          onClick={onUpload}
-          style={navButtonStyle}
-        >
-          Upload
-        </button>
-        <button
-          type="button"
-          onClick={onCamera}
-          style={navButtonStyle}
-        >
-          Camera
-        </button>
         <button
           type="button"
           onClick={onPaste}

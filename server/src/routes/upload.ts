@@ -1,6 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import multer from 'multer'
-import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
@@ -19,7 +18,7 @@ function stubExtractText(_buffer: Buffer, _scanHandwriting: boolean): string {
   return 'Extracted text placeholder. Integrate OCR/handwriting API for production.'
 }
 
-router.post('/', requireAuth, maybeMulter, (req: Request, res: Response) => {
+router.post('/', maybeMulter, (req: Request, res: Response) => {
   if (req.file) {
     const scanHandwriting = req.body?.scanHandwriting === 'true' || req.body?.scanHandwriting === true
     const extracted = stubExtractText(req.file.buffer, scanHandwriting)

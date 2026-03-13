@@ -257,6 +257,21 @@ export function SpreadsheetGrid({
                   row <= normalizedRange.r1 &&
                   col >= normalizedRange.c0 &&
                   col <= normalizedRange.c1
+                const bgColor = cell.format?.fillColor ?? (isSelected ? '#e3f2fd' : inRange ? '#f3f8ff' : '#fff')
+                const deco: string[] = []
+                if (cell.format?.underline) deco.push('underline')
+                if (cell.format?.strikethrough) deco.push('line-through')
+                const cellStyle: React.CSSProperties = {
+                  fontFamily: cell.format?.fontFamily,
+                  fontSize: cell.format?.fontSize != null ? `${cell.format.fontSize}px` : undefined,
+                  color: cell.format?.fontColor,
+                  fontWeight: cell.format?.bold ? 700 : undefined,
+                  fontStyle: cell.format?.italic ? 'italic' : undefined,
+                  textDecoration: deco.length ? deco.join(' ') : undefined,
+                  textAlign: cell.format?.horizontalAlign ?? 'left',
+                  verticalAlign: cell.format?.verticalAlign ?? 'middle',
+                  whiteSpace: cell.format?.wrapText ? 'normal' : 'nowrap',
+                }
                 return (
                   <td
                     key={col}
@@ -264,7 +279,8 @@ export function SpreadsheetGrid({
                       width: 100,
                       border: '1px solid #ddd',
                       padding: 2,
-                      background: isSelected ? '#e3f2fd' : inRange ? '#f3f8ff' : '#fff',
+                      background: bgColor,
+                      ...cellStyle,
                     }}
                     onMouseDown={(e) => {
                       e.preventDefault()
@@ -299,8 +315,15 @@ export function SpreadsheetGrid({
                           width: '100%',
                           border: 'none',
                           outline: 'none',
+                          fontFamily: cell.format?.fontFamily,
+                          fontSize: cell.format?.fontSize != null ? `${cell.format.fontSize}px` : undefined,
+                          color: cell.format?.fontColor,
                           fontWeight: cell.format?.bold ? 700 : undefined,
                           fontStyle: cell.format?.italic ? 'italic' : undefined,
+                          textDecoration: [
+                            cell.format?.underline && 'underline',
+                            cell.format?.strikethrough && 'line-through',
+                          ].filter(Boolean).join(' ') || undefined,
                         }}
                       />
                     ) : (
@@ -308,8 +331,15 @@ export function SpreadsheetGrid({
                         style={{
                           display: 'block',
                           minHeight: 22,
+                          fontFamily: cell.format?.fontFamily,
+                          fontSize: cell.format?.fontSize != null ? `${cell.format.fontSize}px` : undefined,
+                          color: cell.format?.fontColor,
                           fontWeight: cell.format?.bold ? 700 : undefined,
                           fontStyle: cell.format?.italic ? 'italic' : undefined,
+                          textDecoration: [
+                            cell.format?.underline && 'underline',
+                            cell.format?.strikethrough && 'line-through',
+                          ].filter(Boolean).join(' ') || undefined,
                         }}
                       >
                         {cell.value || '\u00A0'}

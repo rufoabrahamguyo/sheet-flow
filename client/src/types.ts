@@ -1,8 +1,22 @@
 // Shared types for API contracts and app state
 
+export type HorizontalAlign = 'left' | 'center' | 'right'
+export type VerticalAlign = 'top' | 'middle' | 'bottom'
+export type NumberFormat = 'general' | 'number' | 'currency' | 'percentage' | 'date'
+
 export interface CellFormat {
   bold?: boolean
   italic?: boolean
+  underline?: boolean
+  strikethrough?: boolean
+  fontFamily?: string
+  fontSize?: number
+  fontColor?: string
+  fillColor?: string
+  horizontalAlign?: HorizontalAlign
+  verticalAlign?: VerticalAlign
+  wrapText?: boolean
+  numberFormat?: NumberFormat
 }
 
 export interface CellData {
@@ -83,4 +97,54 @@ export interface CreateDocumentResponse {
 
 export function cellKey(row: number, col: number): string {
   return `${row},${col}`
+}
+
+// Receipt extraction (document intelligence)
+export interface ReceiptLineItem {
+  itemName: string
+  quantity: number
+  unitPrice: number
+  amount: number
+  category: string
+}
+
+export interface ReceiptExtractResult {
+  date?: string
+  supplier?: string
+  total?: number | null
+  currency?: string | null
+  lineItems: ReceiptLineItem[]
+  error?: string
+}
+
+// M-Pesa analysis
+export interface MpesaTransaction {
+  date: string
+  description: string
+  amount: number
+  type: 'credit' | 'debit'
+  category?: string
+}
+
+export interface MpesaAnalysisResult {
+  transactions: MpesaTransaction[]
+  summary: {
+    totalRevenue: number
+    totalExpenses: number
+    netProfit: number
+    transactionCount: number
+  }
+  insight: string
+}
+
+// Business report
+export interface ReportResult {
+  financialSummary: {
+    monthlyRevenue?: number | null
+    monthlyExpenses?: number | null
+    profitLoss?: number | null
+    currency?: string
+  } | null
+  insights: string[]
+  narrative: string
 }

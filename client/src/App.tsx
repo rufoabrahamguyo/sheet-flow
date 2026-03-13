@@ -1,15 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Header, type EditCommand } from './components/Header'
 import { FormattingToolbar } from './components/FormattingToolbar'
-import { Sidebar } from './components/Sidebar'
 import { SheetTabs } from './components/SheetTabs'
 import { SpreadsheetGrid } from './components/SpreadsheetGrid'
 import { AIChatSidebar } from './components/AIChatSidebar'
 import { UploadModal } from './components/UploadModal'
-import { AuthPanel } from './components/AuthPanel'
 import { FindReplacePanel } from './components/FindReplacePanel'
-import { api, setToken } from './api/client'
-import type { DocumentData, SheetData, ChatMessage } from './types'
+import { api } from './api/client'
+import type {
+  DocumentData,
+  SheetData,
+  ChatMessage,
+  ReceiptExtractResult,
+  MpesaAnalysisResult,
+} from './types'
 import { cellKey } from './types'
 import { recalcSheet, isFormula } from './formulas/engine'
 import { sheetToCsv, csvToGrid } from './utils/csv'
@@ -30,14 +34,8 @@ function createDefaultDocument(): DocumentData {
 }
 
 export default function App() {
-  const [authChecked, setAuthChecked] = useState(false)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
-  const [authLoading, setAuthLoading] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
-
   const [documentId, setDocumentId] = useState<string | null>(null)
-  const [docListLoading, setDocListLoading] = useState(false)
+  const [docListLoading, setDocListLoading] = useState(true)
   const [docListError, setDocListError] = useState<string | null>(null)
   const [documentsList, setDocumentsList] = useState<Array<{ id: string; title: string | null; updated_at: string }>>(
     []
@@ -68,39 +66,48 @@ export default function App() {
 
   const activeSheet = document?.sheets.find((s) => s.id === document.activeSheetId) ?? null
 
+  // Bootstrap: load or create a document so we can show the spreadsheet without login
   useEffect(() => {
+    let cancelled = false
     ;(async () => {
+      setDocListLoading(true)
+      setDocListError(null)
       try {
-        const me = await api.me()
-        setUserEmail(me.user.email)
-      } catch {
-        setUserEmail(null)
+        const res = await api.listDocuments()
+        if (cancelled) return
+        setDocumentsList(res.documents.map((d) => ({ id: d.id, title: d.title, updated_at: d.updated_at })))
+        if (res.documents.length > 0) {
+          setDocumentId(res.documents[0]!.id)
+        } else {
+          const created = await api.createDocument('Untitled spreadsheet')
+          if (cancelled) return
+          setDocumentId(created.document.id)
+          setDocumentsList([
+            {
+              id: created.document.id,
+              title: created.document.name ?? null,
+              updated_at: new Date().toISOString(),
+            },
+          ])
+        }
+      } catch (e) {
+        if (cancelled) return
+        setDocListError(e instanceof Error ? e.message : 'Failed to load documents')
+        try {
+          const created = await api.createDocument('Untitled spreadsheet')
+          if (cancelled) return
+          setDocumentId(created.document.id)
+        } catch {
+          setDocumentId('default')
+        }
       } finally {
-        setAuthChecked(true)
+        if (!cancelled) setDocListLoading(false)
       }
     })()
-  }, [])
-
-  const refreshDocList = useCallback(async () => {
-    setDocListLoading(true)
-    setDocListError(null)
-    try {
-      const res = await api.listDocuments()
-      setDocumentsList(res.documents.map((d) => ({ id: d.id, title: d.title, updated_at: d.updated_at })))
-      if (!documentId && res.documents.length > 0) {
-        setDocumentId(res.documents[0]!.id)
-      }
-    } catch (e) {
-      setDocListError(e instanceof Error ? e.message : 'Failed to load documents')
-    } finally {
-      setDocListLoading(false)
+    return () => {
+      cancelled = true
     }
-  }, [documentId])
-
-  useEffect(() => {
-    if (!authChecked || !userEmail) return
-    refreshDocList()
-  }, [authChecked, userEmail, refreshDocList])
+  }, [])
 
   const loadDocument = useCallback(async () => {
     setDocLoading(true)
@@ -117,10 +124,9 @@ export default function App() {
   }, [documentId])
 
   useEffect(() => {
-    if (!authChecked || !userEmail) return
     if (!documentId) return
     loadDocument()
-  }, [loadDocument])
+  }, [documentId, loadDocument])
 
   const saveDocument = useCallback(
     async (doc: DocumentData) => {
@@ -174,7 +180,7 @@ export default function App() {
   )
 
   const handleFormatChange = useCallback(
-    (row: number, col: number, format: Partial<{ bold?: boolean; italic?: boolean }>) => {
+    (row: number, col: number, format: Partial<import('./types').CellFormat>) => {
       if (!document || !activeSheet) return
       pushUndo(document)
       const key = cellKey(row, col)
@@ -221,6 +227,92 @@ export default function App() {
     }
   }, [])
 
+  const handleAttachInChat = useCallback(async (file: File) => {
+    setChatError(null)
+    try {
+      const res = await api.uploadFile(file)
+      return res.data ?? null
+    } catch (err) {
+      setChatError(err instanceof Error ? err.message : 'Upload failed')
+      return null
+    }
+  }, [])
+
+  /** Find next row index where col 0 is empty (for appending). */
+  const getNextAppendRow = useCallback((sheet: SheetData): number => {
+    for (let r = 0; r < 25; r++) {
+      const v = sheet.cells[cellKey(r, 0)]?.value?.trim()
+      if (!v) return r
+    }
+    return 25
+  }, [])
+
+  const appendReceiptToSheet = useCallback(
+    (result: ReceiptExtractResult) => {
+      if (!document || !activeSheet) return
+      pushUndo(document)
+      const nextCells = { ...activeSheet.cells }
+      let startRow = getNextAppendRow(activeSheet)
+      const needsHeader = startRow === 0
+      if (needsHeader) {
+        nextCells[cellKey(0, 0)] = { value: 'Date' }
+        nextCells[cellKey(0, 1)] = { value: 'Item' }
+        nextCells[cellKey(0, 2)] = { value: 'Amount' }
+        nextCells[cellKey(0, 3)] = { value: 'Category' }
+        nextCells[cellKey(0, 4)] = { value: 'Supplier' }
+        startRow = 1
+      }
+      const dateStr = result.date ?? ''
+      const supplier = result.supplier ?? ''
+      for (let i = 0; i < result.lineItems.length; i++) {
+        const row = startRow + i
+        if (row >= 25) break
+        const item = result.lineItems[i]!
+        nextCells[cellKey(row, 0)] = { value: dateStr }
+        nextCells[cellKey(row, 1)] = { value: item.itemName }
+        nextCells[cellKey(row, 2)] = { value: String(item.amount) }
+        nextCells[cellKey(row, 3)] = { value: item.category }
+        nextCells[cellKey(row, 4)] = { value: supplier }
+      }
+      const nextSheet = { ...activeSheet, cells: nextCells }
+      const nextSheets = document.sheets.map((s) => (s.id === activeSheet.id ? nextSheet : s))
+      setDocument({ ...document, sheets: nextSheets })
+      scheduleSave()
+    },
+    [document, activeSheet, getNextAppendRow, pushUndo, scheduleSave]
+  )
+
+  const appendMpesaToSheet = useCallback(
+    (result: MpesaAnalysisResult) => {
+      if (!document || !activeSheet) return
+      pushUndo(document)
+      const nextCells = { ...activeSheet.cells }
+      let startRow = getNextAppendRow(activeSheet)
+      const needsHeader = startRow === 0
+      if (needsHeader) {
+        nextCells[cellKey(0, 0)] = { value: 'Date' }
+        nextCells[cellKey(0, 1)] = { value: 'Description' }
+        nextCells[cellKey(0, 2)] = { value: 'Amount' }
+        nextCells[cellKey(0, 3)] = { value: 'Type' }
+        startRow = 1
+      }
+      for (let i = 0; i < result.transactions.length; i++) {
+        const row = startRow + i
+        if (row >= 25) break
+        const t = result.transactions[i]!
+        nextCells[cellKey(row, 0)] = { value: t.date }
+        nextCells[cellKey(row, 1)] = { value: t.description.slice(0, 200) }
+        nextCells[cellKey(row, 2)] = { value: String(t.amount) }
+        nextCells[cellKey(row, 3)] = { value: t.type }
+      }
+      const nextSheet = { ...activeSheet, cells: nextCells }
+      const nextSheets = document.sheets.map((s) => (s.id === activeSheet.id ? nextSheet : s))
+      setDocument({ ...document, sheets: nextSheets })
+      scheduleSave()
+    },
+    [document, activeSheet, getNextAppendRow, pushUndo, scheduleSave]
+  )
+
   const handleUploadText = useCallback(async (text: string, scanHandwriting: boolean) => {
     setUploadLoading(true)
     setUploadError(null)
@@ -234,7 +326,6 @@ export default function App() {
     }
   }, [])
 
-  const openUpload = () => setUploadModalOpen(true)
   const openChat = () => setChatOpen(true)
   const [ioError, setIoError] = useState<string | null>(null)
 
@@ -366,126 +457,11 @@ export default function App() {
     [activeSheet, document, handleCellChange, selectedCell, selectedRange, pushUndo, scheduleSave]
   )
 
-  const headerRightSlot = useMemo(() => {
-    if (!userEmail) return null
-    return (
-      <button
-        type="button"
-        onClick={async () => {
-          try {
-            await api.logout()
-          } catch {
-            // ignore
-          }
-          setToken(null)
-          setUserEmail(null)
-          setDocumentId(null)
-          setDocument(null)
-        }}
-        style={{
-          padding: '6px 10px',
-          border: '1px solid #ddd',
-          borderRadius: 999,
-          background: '#fff',
-          color: '#444',
-          fontSize: 13,
-          marginRight: 6,
-        }}
-        title="Logout"
-      >
-        {userEmail}
-      </button>
-    )
-  }, [userEmail])
-
-  if (!authChecked) {
-    return (
-      <div className="app">
-        <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={null} />
-        <div className="app-loading">Loading…</div>
-      </div>
-    )
-  }
-
-  if (!userEmail) {
-    return (
-      <div className="app">
-        <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={null} />
-        <AuthPanel
-          mode={authMode}
-          onModeChange={setAuthMode}
-          loading={authLoading}
-          error={authError}
-          onSubmit={async (email, password) => {
-            setAuthLoading(true)
-            setAuthError(null)
-            try {
-              const res =
-                authMode === 'login' ? await api.login(email, password) : await api.register(email, password)
-              setToken(res.token)
-              setUserEmail(res.user.email)
-              await refreshDocList()
-            } catch (e) {
-              setAuthError(e instanceof Error ? e.message : 'Auth failed')
-            } finally {
-              setAuthLoading(false)
-            }
-          }}
-        />
-      </div>
-    )
-  }
-
   if (!documentId) {
     return (
       <div className="app">
-        <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={headerRightSlot} />
-        <div style={{ padding: 24, maxWidth: 720, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Your documents</h2>
-          {docListError && <div style={{ color: '#c00', marginBottom: 10 }}>{docListError}</div>}
-          <button
-            type="button"
-            disabled={docListLoading}
-            onClick={async () => {
-              try {
-                const created = await api.createDocument('Untitled spreadsheet')
-                setDocumentId(created.document.id)
-                await refreshDocList()
-              } catch (e) {
-                setDocListError(e instanceof Error ? e.message : 'Create failed')
-              }
-            }}
-            style={{
-              padding: '10px 14px',
-              border: 'none',
-              borderRadius: 8,
-              background: '#1976d2',
-              color: '#fff',
-              fontWeight: 700,
-            }}
-          >
-            New document
-          </button>
-          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {documentsList.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => setDocumentId(d.id)}
-                style={{
-                  padding: '12px 14px',
-                  border: '1px solid #ddd',
-                  borderRadius: 10,
-                  background: '#fff',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ fontWeight: 700 }}>{d.title ?? d.id}</div>
-                <div style={{ color: '#666', fontSize: 12 }}>Updated {new Date(d.updated_at).toLocaleString()}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+        <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={null} />
+        <div className="app-loading">{docListLoading ? 'Loading…' : docListError || 'Loading…'}</div>
       </div>
     )
   }
@@ -493,7 +469,7 @@ export default function App() {
   if (docLoading && !document) {
     return (
       <div className="app">
-        <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={headerRightSlot} />
+        <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={null} />
         <div className="app-loading">Loading...</div>
       </div>
     )
@@ -502,7 +478,7 @@ export default function App() {
   if (docError && !document) {
     return (
       <div className="app">
-        <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={headerRightSlot} />
+        <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={null} />
         <div className="app-error">{docError}</div>
       </div>
     )
@@ -512,30 +488,8 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={headerRightSlot} />
+      <Header onEditCommand={execEditCommand} hasSelection={!!selectedCell} rightSlot={null} />
       <div className="app-main">
-        <Sidebar
-          onUpload={openUpload}
-          onCamera={openUpload}
-          onPaste={openUpload}
-          onHistory={async () => {
-            // Export CSV (basic) from active sheet
-            if (!documentId || !activeSheet) return
-            try {
-              setIoError(null)
-              const csv = await api.exportCsv(documentId)
-              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-              const url = URL.createObjectURL(blob)
-              const a = document.createElement('a')
-              a.href = url
-              a.download = `${(document?.name ?? 'sheet')}.csv`
-              a.click()
-              URL.revokeObjectURL(url)
-            } catch (e) {
-              setIoError(e instanceof Error ? e.message : 'Export failed')
-            }
-          }}
-        />
         <div className="app-content">
           {ioError && <div style={{ padding: '8px 16px', color: '#c00' }}>{ioError}</div>}
           <div
@@ -548,54 +502,13 @@ export default function App() {
             }}
           >
             <FormattingToolbar
-              onBold={() =>
-                selectedCell && handleFormatChange(selectedCell.row, selectedCell.col, { bold: !selectedFormat?.bold })
+              selectedFormat={selectedFormat}
+              onFormatChange={(format) =>
+                selectedCell && handleFormatChange(selectedCell.row, selectedCell.col, format)
               }
-              onItalic={() =>
-                selectedCell && handleFormatChange(selectedCell.row, selectedCell.col, { italic: !selectedFormat?.italic })
-              }
-              boldActive={selectedFormat?.bold}
-              italicActive={selectedFormat?.italic}
+              onEditCommand={execEditCommand}
+              disabled={!selectedCell}
             />
-            <button
-              type="button"
-              onClick={openChat}
-              style={{
-                marginLeft: 'auto',
-                padding: '6px 12px',
-                border: '1px solid #1976d2',
-                borderRadius: 6,
-                background: '#fff',
-                color: '#1976d2',
-              }}
-            >
-              AI Chat
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                if (!documentId || !activeSheet) return
-                const csv = sheetToCsv(activeSheet)
-                const newCsv = prompt('Paste CSV to import into current sheet (or cancel):', csv)
-                if (!newCsv) return
-                try {
-                  setIoError(null)
-                  const res = await api.importCsv(documentId, newCsv, activeSheet.id)
-                  setDocument(res.document)
-                } catch (e) {
-                  setIoError(e instanceof Error ? e.message : 'Import failed')
-                }
-              }}
-              style={{
-                padding: '6px 12px',
-                border: '1px solid #ddd',
-                borderRadius: 6,
-                background: '#fff',
-                color: '#444',
-              }}
-            >
-              Import CSV
-            </button>
           </div>
           <SheetTabs
             sheets={document.sheets}
@@ -623,13 +536,84 @@ export default function App() {
           )}
         </div>
       </div>
+      <button
+        type="button"
+        onClick={openChat}
+        title="AI Chat"
+        aria-label="Open AI Chat"
+        style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          border: 'none',
+          background: '#1976d2',
+          color: '#fff',
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999,
+        }}
+      >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z" />
+        </svg>
+      </button>
       <AIChatSidebar
         isOpen={chatOpen}
         onClose={() => setChatOpen(false)}
         messages={chatMessages}
         onSendMessage={handleSendChat}
+        onAttachFile={handleAttachInChat}
         isLoading={chatLoading}
         error={chatError}
+        documentId={documentId}
+        onExtractReceipt={async (file) => {
+          setChatError(null)
+          try {
+            return await api.extractReceipt(file)
+          } catch (err) {
+            setChatError(err instanceof Error ? err.message : 'Receipt scan failed')
+            return null
+          }
+        }}
+        onAnalyzeMpesaFile={async (file) => {
+          setChatError(null)
+          try {
+            const res = await api.analyzeMpesaFile(file)
+            return res
+          } catch (err) {
+            setChatError(err instanceof Error ? err.message : 'M-Pesa analysis failed')
+            return null
+          }
+        }}
+        onAnalyzeMpesaText={async (text) => {
+          setChatError(null)
+          try {
+            const res = await api.analyzeMpesaText(text)
+            return res
+          } catch (err) {
+            setChatError(err instanceof Error ? err.message : 'M-Pesa analysis failed')
+            return null
+          }
+        }}
+        onGenerateReport={async () => {
+          if (!documentId) return null
+          setChatError(null)
+          try {
+            const res = await api.generateReport(documentId)
+            return res
+          } catch (err) {
+            setChatError(err instanceof Error ? err.message : 'Report failed')
+            return null
+          }
+        }}
+        onAddReceiptToSheet={appendReceiptToSheet}
+        onAddMpesaToSheet={appendMpesaToSheet}
       />
       <UploadModal
         isOpen={uploadModalOpen}
