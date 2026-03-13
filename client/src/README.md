@@ -12,36 +12,36 @@ Full-stack spreadsheet application with React (Vite + TypeScript) frontend and N
 ### 1. Install dependencies
 
 ```bash
-# Frontend (project root)
-npm install
+# Frontend
+cd client && npm install
 
 # Backend
-cd server && npm install && cd ..
+cd server && npm install
 ```
 
 ### 2. Environment (optional)
 
-- **Frontend**: Copy `.env.example` to `.env` and set `VITE_API_URL` if the backend is not on the same host (e.g. production). For local dev, the Vite proxy forwards `/api` to the backend.
-- **Backend**: Copy `server/.env.example` to `server/.env` and set **`JWT_SECRET`**, `PORT`, `CORS_ORIGIN`, and optionally `OPENAI_API_KEY`, `DATABASE_PATH`. See [server/README.md](server/README.md).
+- **Frontend**: (optional) Copy `client/.env.example` to `client/.env` and set `VITE_API_URL` if the backend is not on the same host (e.g. production). For local dev, the Vite proxy forwards `/api` to the backend.
+- **Backend**: Copy `server/.env.example` to `server/.env` and set **`JWT_SECRET`**, `PORT`, `CORS_ORIGIN`, MongoDB settings, and AI keys. See [server/README.md](../../server/README.md) for details.
 
 ### 3. Run both apps
 
 **Terminal 1 – backend**
 
 ```bash
-cd server && npm run dev
+cd server
+npm run dev
 ```
 
 **Terminal 2 – frontend**
 
 ```bash
+cd client
 npm run dev
 ```
 
 - Frontend: http://localhost:5173  
 - Backend: http://localhost:3001  
-
-Data is stored in SQLite under `server/data/` by default.
 
 ## Scripts (frontend)
 
