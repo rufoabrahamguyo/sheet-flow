@@ -53,7 +53,21 @@ router.post('/generate', optionalAuth, async (req: Request, res: Response) => {
     const raw = await callGeminiText([
       { role: 'user', parts: [{ text: `${REPORT_PROMPT}\n\n---\n${dataBlob}` }] },
     ])
-    const cleaned = raw.replace(/^```\w*\n?|\n?```$/g, '').trim()
+
+    // Gemini sometimes wraps JSON in ```json fences or adds prose; try hard to extract the JSON object.
+    let jsonText = raw
+    const fenceMatch = raw.match(/```json([\s\S]*?)```/i)
+    if (fenceMatch && fenceMatch[1]) {
+      jsonText = fenceMatch[1]
+    } else {
+      const firstBrace = raw.indexOf('{')
+      const lastBrace = raw.lastIndexOf('}')
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        jsonText = raw.slice(firstBrace, lastBrace + 1)
+      }
+    }
+    const cleaned = jsonText.replace(/^```\w*\n?|\n?```$/g, '').trim()
+
     let parsed: { financialSummary?: object | null; insights?: string[]; narrative?: string }
     try {
       parsed = JSON.parse(cleaned) as typeof parsed

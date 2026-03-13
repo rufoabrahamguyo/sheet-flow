@@ -282,6 +282,45 @@ export default function App() {
     [document, activeSheet, getNextAppendRow, pushUndo, scheduleSave]
   )
 
+  const handleAddSheet = useCallback(() => {
+    setDocument((prev) => {
+      if (!prev) return prev
+      const index = prev.sheets.length + 1
+      let baseId = `sheet-${index}`
+      if (prev.sheets.some((s) => s.id === baseId) && typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+        baseId = `sheet-${index}-${crypto.randomUUID().slice(0, 8)}`
+      }
+      const name = `Sheet ${index}`
+      const nextSheet: SheetData = { id: baseId, name, cells: {} }
+      const nextDoc: DocumentData = {
+        ...prev,
+        sheets: [...prev.sheets, nextSheet],
+        activeSheetId: nextSheet.id,
+      }
+      return nextDoc
+    })
+    scheduleSave()
+  }, [scheduleSave])
+
+  const reportSummary = useMemo(() => {
+    if (!activeSheet || activeSheet.name !== 'Report') return null
+    let revenue = 0
+    let expenses = 0
+    let profit = 0
+    let currency = 'KES'
+    for (let r = 0; r < 25; r++) {
+      const label = activeSheet.cells[cellKey(r, 0)]?.value
+      const val = activeSheet.cells[cellKey(r, 1)]?.value
+      if (label === 'Revenue' && val) revenue = Number(val) || 0
+      if (label === 'Expenses' && val) expenses = Number(val) || 0
+      if (label === 'Profit / Loss' && val) profit = Number(val) || 0
+      if (r === 1 && activeSheet.cells[cellKey(1, 2)]?.value) {
+        currency = activeSheet.cells[cellKey(1, 2)].value
+      }
+    }
+    return { revenue, expenses, profit, currency }
+  }, [activeSheet])
+
   const appendMpesaToSheet = useCallback(
     (result: MpesaAnalysisResult) => {
       if (!document || !activeSheet) return
@@ -313,6 +352,62 @@ export default function App() {
     [document, activeSheet, getNextAppendRow, pushUndo, scheduleSave]
   )
 
+  const appendReportToSheet = useCallback(
+    (report: ReportResult) => {
+      if (!document) return
+      pushUndo(document)
+      const existing = document.sheets.find((s) => s.name === 'Report')
+      const sheetId = existing?.id ?? `report-${crypto.randomUUID?.().slice(0, 8) ?? 'sheet'}`
+      const sheet: SheetData = existing ?? { id: sheetId, name: 'Report', cells: {} }
+      const cells: SheetData['cells'] = { ...sheet.cells }
+
+      let row = 0
+      cells[cellKey(row, 0)] = { value: 'Metric' }
+      cells[cellKey(row, 1)] = { value: 'Value' }
+      row += 1
+
+      if (report.financialSummary) {
+        const fs = report.financialSummary
+        cells[cellKey(row, 0)] = { value: 'Revenue' }
+        cells[cellKey(row, 1)] = { value: String(fs.monthlyRevenue ?? '') }
+        row += 1
+        cells[cellKey(row, 0)] = { value: 'Expenses' }
+        cells[cellKey(row, 1)] = { value: String(fs.monthlyExpenses ?? '') }
+        row += 1
+        cells[cellKey(row, 0)] = { value: 'Profit / Loss' }
+        cells[cellKey(row, 1)] = { value: String(fs.profitLoss ?? '') }
+        row += 2
+        cells[cellKey(0, 2)] = { value: 'Currency' }
+        cells[cellKey(1, 2)] = { value: fs.currency ?? 'KES' }
+      }
+
+      if (report.insights?.length) {
+        cells[cellKey(row, 0)] = { value: 'Insights' }
+        row += 1
+        report.insights.forEach((s, idx) => {
+          cells[cellKey(row + idx, 0)] = { value: `• ${s}` }
+        })
+        row += report.insights.length + 1
+      }
+
+      if (report.narrative) {
+        cells[cellKey(row, 0)] = { value: 'Narrative' }
+        row += 1
+        cells[cellKey(row, 0)] = { value: report.narrative }
+      }
+
+      const nextSheet: SheetData = { ...sheet, cells }
+      const others = document.sheets.filter((s) => s.id !== nextSheet.id)
+      const nextDoc: DocumentData = {
+        ...document,
+        sheets: [...others, nextSheet],
+        activeSheetId: nextSheet.id,
+      }
+      setDocument(nextDoc)
+      scheduleSave()
+    },
+    [document, pushUndo, scheduleSave]
+  )
   const handleUploadText = useCallback(async (text: string, scanHandwriting: boolean) => {
     setUploadLoading(true)
     setUploadError(null)
@@ -514,25 +609,75 @@ export default function App() {
             sheets={document.sheets}
             activeSheetId={document.activeSheetId}
             onSelectSheet={handleSelectSheet}
+            onAddSheet={handleAddSheet}
           />
           {activeSheet && (
-            <SpreadsheetGrid
-              sheet={activeSheet}
-              onCellChange={handleCellChange}
-              onFormatChange={handleFormatChange}
-              selectedCell={selectedCell}
-              onSelectCell={(row, col) => {
-                setSelectedCell({ row, col })
-                setSelectedRange({ start: { row, col }, end: { row, col } })
-              }}
-              selectedRange={selectedRange}
-              onSelectRange={setSelectedRange}
-              onRequestUndo={() => execEditCommand('undo')}
-              onRequestRedo={() => execEditCommand('redo')}
-              onRequestCopy={() => execEditCommand('copy')}
-              onRequestCut={() => execEditCommand('cut')}
-              onRequestPaste={() => execEditCommand('paste')}
-            />
+            <>
+              {activeSheet.name === 'Report' && reportSummary && (
+                <div
+                  style={{
+                    padding: '8px 16px',
+                    borderBottom: '1px solid #eee',
+                    background: '#fafafa',
+                    display: 'flex',
+                    gap: 12,
+                    alignItems: 'flex-end',
+                    height: 90,
+                  }}
+                >
+                  {['Revenue', 'Expenses', 'P/L'].map((label, idx) => {
+                    const value =
+                      label === 'Revenue'
+                        ? reportSummary.revenue
+                        : label === 'Expenses'
+                        ? reportSummary.expenses
+                        : reportSummary.profit
+                    const max =
+                      Math.max(
+                        reportSummary.revenue,
+                        reportSummary.expenses,
+                        Math.abs(reportSummary.profit)
+                      ) || 1
+                    const height = Math.max(8, (Math.abs(value) / max) * 70)
+                    const isNegative = value < 0 && label === 'P/L'
+                    return (
+                      <div key={label} style={{ flex: 1, textAlign: 'center', fontSize: 11 }}>
+                        <div
+                          style={{
+                            margin: '0 auto 4px',
+                            width: 24,
+                            height,
+                            borderRadius: 4,
+                            background: isNegative ? '#c62828' : idx === 0 ? '#1976d2' : '#f9a825',
+                          }}
+                        />
+                        <div>{label}</div>
+                        <div style={{ fontSize: 10, color: '#555' }}>
+                          {reportSummary.currency} {value.toLocaleString()}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              <SpreadsheetGrid
+                sheet={activeSheet}
+                onCellChange={handleCellChange}
+                onFormatChange={handleFormatChange}
+                selectedCell={selectedCell}
+                onSelectCell={(row, col) => {
+                  setSelectedCell({ row, col })
+                  setSelectedRange({ start: { row, col }, end: { row, col } })
+                }}
+                selectedRange={selectedRange}
+                onSelectRange={setSelectedRange}
+                onRequestUndo={() => execEditCommand('undo')}
+                onRequestRedo={() => execEditCommand('redo')}
+                onRequestCopy={() => execEditCommand('copy')}
+                onRequestCut={() => execEditCommand('cut')}
+                onRequestPaste={() => execEditCommand('paste')}
+              />
+            </>
           )}
         </div>
       </div>
@@ -614,6 +759,7 @@ export default function App() {
         }}
         onAddReceiptToSheet={appendReceiptToSheet}
         onAddMpesaToSheet={appendMpesaToSheet}
+        onAddReportToSheet={appendReportToSheet}
       />
       <UploadModal
         isOpen={uploadModalOpen}
