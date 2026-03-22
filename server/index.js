@@ -1,6 +1,8 @@
+import dotenv from "dotenv"
 import express from "express";
-import { initDb } from "./config/db.js";
-import authRoutes from "./routes/auth.routes.js";
+import { initializeDB } from "./config/db.js";
+
+dotenv.config()
 
 const app = express();
 
@@ -10,18 +12,17 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 
-app.use('/api/auth', authRoutes)
+// app.use('/api/auth', authRoutes)
 
 const startServer = async () => {
     try {
-        await initDb();
-        console.log("✅ Database initialized");
+        await initializeDB();
 
-        app.listen(port, () => {
-            console.log(`🚀 Server is running on port ${port}`);
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
         });
     } catch (error) {
-        console.error("❌ Failed to start the server:", error);
+        console.error("Failed to start the server:", error);
         process.exit(1);
     }
 };
