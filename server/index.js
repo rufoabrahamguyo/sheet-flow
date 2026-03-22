@@ -1,6 +1,7 @@
 import dotenv from "dotenv"
 import express from "express";
 import { initializeDB } from "./config/db.js";
+import userRoutes from "./routes/UserRoutes.js"
 
 dotenv.config()
 
@@ -12,7 +13,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 
-// app.use('/api/auth', authRoutes)
+app.use('/api', userRoutes)
 
 const startServer = async () => {
     try {
